@@ -145,9 +145,10 @@ Resources:
             sudo yum update -y
             sudo yum install -y golang
             # Clone your application
-            git clone https://github.com/pawong/cloudformation-vpc-alb-ec2-go-example.git/ /home/ec2-user/cloudformation-vpc-alb-ec2-go-example
+            cd ~
+            git clone https://github.com/pawong/cloudformation-vpc-alb-ec2-go-example.git/
             # Change directory to the application
-            cd /home/ec2-user/cloudformation-vpc-alb-ec2-go-example/src
+            cd cloudformation-vpc-alb-ec2-go-example/src
             # Build your Go application
             go build -o main main.go
             # Run your Go application (you might want to set this up as a service)
@@ -167,13 +168,14 @@ Resources:
         Fn::Base64:
           Fn::Sub: |
             #!/bin/bash -xe
-            # Install Go./
+            # Install Go
             sudo yum update -y
             sudo yum install -y golang
             # Clone your application
-            git clone https://github.com/pawong/cloudformation-vpc-alb-ec2-go-example.git/ /home/ec2-user/cloudformation-vpc-alb-ec2-go-example
+            cd ~
+            git clone https://github.com/pawong/cloudformation-vpc-alb-ec2-go-example.git/
             # Change directory to the application
-            cd /home/ec2-user/cloudformation-vpc-alb-ec2-go-example/src
+            cd cloudformation-vpc-alb-ec2-go-example/src
             # Build your Go application
             go build -o main main.go
             # Run your Go application (you might want to set this up as a service)
