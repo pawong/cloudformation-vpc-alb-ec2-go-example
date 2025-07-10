@@ -157,13 +157,13 @@ Resources:
         sudo yum update -y
         sudo yum install -y golang
         # Clone your application
-        git clone https://github.com/your-repo/your-go-app.git /home/ec2-user/your-go-app
+        git clone https://github.com/pawong/cloudformation-vpc-alb-ec2-go-example.git/src /home/ec2-user/src
         # Change directory to the application
-        cd /home/ec2-user/your-go-app
+        cd /home/ec2-user/src
         # Build your Go application
-        go build -o your-go-app-executable
+        go build -o main main.go
         # Run your Go application (you might want to set this up as a service)
-        ./your-go-app-executable
+        ./main
 
     Type: AWS::EC2::Instance
     Properties:
@@ -180,13 +180,13 @@ Resources:
         sudo yum update -y
         sudo yum install -y golang
         # Clone your application
-        git clone https://github.com/your-repo/your-go-app.git /home/ec2-user/your-go-app
+        git clone https://github.com/pawong/cloudformation-vpc-alb-ec2-go-example.git/src /home/ec2-user/src
         # Change directory to the application
-        cd /home/ec2-user/your-go-app
+        cd /home/ec2-user/src
         # Build your Go application
-        go build -o your-go-app-executable
+        go build -o main main.go
         # Run your Go application (you might want to set this up as a service)
-        ./your-go-app-executable
+        ./main
 
   # EC2 and ALB Security Groups
   ELBSecurityGroup:
@@ -198,6 +198,10 @@ Resources:
       - IpProtocol: tcp
         FromPort: 80
         ToPort: 80
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
         CidrIp: 0.0.0.0/0
 
   EC2SecurityGroup:
@@ -213,10 +217,6 @@ Resources:
           Fn::GetAtt:
           - ELBSecurityGroup
           - GroupId
-      - IpProtocol: tcp
-        FromPort: 22
-        ToPort: 22
-        CidrIp: xxx.xxx.xxx.xxx
 
   # Target Group, Listener and Application  Load Balancer
   EC2TargetGroup:
