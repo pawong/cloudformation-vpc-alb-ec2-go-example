@@ -4,9 +4,11 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: Cloudformation VPC ALB EC2 Go Example
 
 Parameters:
-  SecurityGroupDescription:
-    Description: Security Group Description
+  BaseStackName:
     Type: String
+    MinLength: 1
+    MaxLength: 255
+    AllowedPattern : "^[a-zA-Z][-a-zA-Z0-9]*$"
   KeyName:
     Description: Key Pair for EC2
     Type: 'AWS::EC2::KeyPair::KeyName'
@@ -44,7 +46,7 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       CidrBlock: 10.0.1.0/24
-      AvailabilityZone: us-east-2a
+      AvailabilityZone: us-east-1a
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
@@ -56,7 +58,7 @@ Resources:
       VpcId: !Ref VPC
       CidrBlock: 10.0.2.0/24
       MapPublicIpOnLaunch: false
-      AvailabilityZone: us-east-2a
+      AvailabilityZone: us-east-1a
       Tags:
         - Key: Name
           Value: Private Subnet 1
@@ -66,7 +68,7 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       CidrBlock: 10.0.3.0/24
-      AvailabilityZone: us-east-2b
+      AvailabilityZone: us-east-1b
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
@@ -77,7 +79,7 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       CidrBlock: 10.0.4.0/24
-      AvailabilityZone: us-east-2b
+      AvailabilityZone: us-east-1b
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
@@ -130,63 +132,57 @@ Resources:
       SubnetId: !Ref PrivateSubnet2
       RouteTableId: !Ref PrivateRouteTable
 
-  #EC2 Instance Type
-  InstanceType:
-    Description: EC2 instance type
-    Type: String
-    Default: t2.micro
-    AllowedValues:
-      - t3.micro
-      - t2.micro
-    ConstraintDescription: must be a valid EC2 instance type.
-
-  #EC2 Instances
-  EC2Instance:
+  #EC2 Instance
+  EC2Instance0:
     Type: AWS::EC2::Instance
     Properties:
       ImageId: !Ref LatestAmiId
-      InstanceType: !Ref InstanceType
+      InstanceType: t2.micro
       SecurityGroupIds:
         - !Ref EC2SecurityGroup
       SubnetId: !Ref PublicSubnet1
       KeyName: !Ref KeyName
-    UserData:
-      Fn::Base64: !Sub |
-        #!/bin/bash -xe
-        # Install Go
-        sudo yum update -y
-        sudo yum install -y golang
-        # Clone your application
-        git clone https://github.com/pawong/cloudformation-vpc-alb-ec2-go-example.git/src /home/ec2-user/src
-        # Change directory to the application
-        cd /home/ec2-user/src
-        # Build your Go application
-        go build -o main main.go
-        # Run your Go application (you might want to set this up as a service)
-        ./main
+      UserData:
+        Fn::Base64:
+          Fn::Sub: |
+            #!/bin/bash -xe
+            # Install Go
+            sudo yum update -y
+            sudo yum install -y golang
+            # Clone your application
+            git clone https://github.com/pawong/cloudformation-vpc-alb-ec2-go-example.git/
+            # Change directory to the application
+            cd /home/ec2-user/cloudformation-vpc-alb-ec2-go-example/src
+            # Build your Go application
+            go build -o main main.go
+            # Run your Go application (you might want to set this up as a service)
+            ./main
 
+  #EC2 Instance
+  EC2Instance1:
     Type: AWS::EC2::Instance
     Properties:
       ImageId: !Ref LatestAmiId
-      InstanceType: !Ref InstanceType
+      InstanceType: t2.micro
       SecurityGroupIds:
         - !Ref EC2SecurityGroup
       SubnetId: !Ref PublicSubnet2
       KeyName: !Ref KeyName
-    UserData:
-      Fn::Base64: !Sub |
-        #!/bin/bash -xe
-        # Install Go
-        sudo yum update -y
-        sudo yum install -y golang
-        # Clone your application
-        git clone https://github.com/pawong/cloudformation-vpc-alb-ec2-go-example.git/src /home/ec2-user/src
-        # Change directory to the application
-        cd /home/ec2-user/src
-        # Build your Go application
-        go build -o main main.go
-        # Run your Go application (you might want to set this up as a service)
-        ./main
+      UserData:
+        Fn::Base64:
+          Fn::Sub: |
+            #!/bin/bash -xe
+            # Install Go
+            sudo yum update -y
+            sudo yum install -y golang
+            # Clone your application
+            git clone https://github.com/pawong/cloudformation-vpc-alb-ec2-go-example.git/
+            # Change directory to the application
+            cd /home/ec2-user/cloudformation-vpc-alb-ec2-go-example/src
+            # Build your Go application
+            go build -o main main.go
+            # Run your Go application (you might want to set this up as a service)
+            ./main
 
   # EC2 and ALB Security Groups
   ELBSecurityGroup:
@@ -203,7 +199,7 @@ Resources:
   EC2SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: !Ref SecurityGroupDescription
+      GroupDescription: !Sub ${BaseStackName}-SG
       VpcId: !Ref VPC
       SecurityGroupIngress:
       - IpProtocol: tcp
@@ -219,21 +215,22 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
       HealthCheckIntervalSeconds: 30
+      HealthCheckPath: /health
       HealthCheckProtocol: HTTP
       HealthCheckTimeoutSeconds: 15
       HealthyThresholdCount: 5
       Matcher:
         HttpCode: '200'
-      Name: EC2TargetGroup
+      Name: !Sub ${BaseStackName}-Target-Group
       Port: 80
       Protocol: HTTP
       TargetGroupAttributes:
       - Key: deregistration_delay.timeout_seconds
         Value: '20'
       Targets:
-      - Id: !Ref EC2Instance1
+      - Id: !Ref EC2Instance0
         Port: 80
-      - Id: !Ref EC2Instance2
+      - Id: !Ref EC2Instance1
         Port: 80
       UnhealthyThresholdCount: 3
       VpcId: !Ref VPC

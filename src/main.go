@@ -18,7 +18,7 @@ func main() {
 	router.GET("/8ball", getAnwserOnly)
 	router.POST("/8ball", getAnwser)
 
-	router.Run("0.0.0.0:8080")
+	router.Run("0.0.0.0:80")
 }
 
 func readRoot(c *gin.Context) {
