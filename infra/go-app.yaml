@@ -156,7 +156,7 @@ Resources:
             # Build your Go application
             go build -o main main.go
             # Run your Go application (you might want to set this up as a service)
-            ./main
+            ./main &
 
   #EC2 Instance
   EC2Instance1:
@@ -172,7 +172,7 @@ Resources:
         Fn::Base64:
           Fn::Sub: |
             #!/bin/bash -xe
-            # Install Go
+            # Install Go./
             sudo yum update -y
             sudo yum install -y golang
             # Clone your application
@@ -182,7 +182,7 @@ Resources:
             # Build your Go application
             go build -o main main.go
             # Run your Go application (you might want to set this up as a service)
-            ./main
+            ./main &
 
   # EC2 and ALB Security Groups
   ELBSecurityGroup:
