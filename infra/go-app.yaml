@@ -141,6 +141,10 @@ Resources:
         Fn::Base64:
           Fn::Sub: |
             #!/bin/bash -xe
+            # Clone your application
+            cd ~ # go home
+            git clone https://github.com/pawong/cloudformation-vpc-alb-ec2-go-example.git/
+            cd cloudformation-vpc-alb-ec2-go-example/src
             . ./run.sh
 
   #EC2 Instance
@@ -157,6 +161,10 @@ Resources:
         Fn::Base64:
           Fn::Sub: |
             #!/bin/bash -xe
+            # Clone your application
+            cd ~ # go home
+            git clone https://github.com/pawong/cloudformation-vpc-alb-ec2-go-example.git/
+            cd cloudformation-vpc-alb-ec2-go-example/src
             . ./run.sh
 
   # EC2 and ALB Security Groups
