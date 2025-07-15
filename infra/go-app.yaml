@@ -11,6 +11,27 @@ Parameters:
     Description: The latest Amazon Linux 2 AMI from the Parameter Store
     Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
     Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
+  VpcAvailabilityZoneA:
+    Type: AWS::EC2::AvailabilityZone::Name
+    Default: us-east-1a
+  VpcAvailabilityZoneB:
+    Type: AWS::EC2::AvailabilityZone::Name
+    Default: us-east-1b
+  ASGDesired:
+    Type: Number
+    Default: 1
+    MinValue: 1
+    MaxValue: 10
+  ASGMin:
+    Type: Number
+    Default: 1
+    MinValue: 1
+    MaxValue: 10
+  ASGMax:
+    Type: Number
+    Default: 10
+    MinValue: 1
+    MaxValue: 10
 
 Resources:
   VPC:
@@ -41,7 +62,7 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       CidrBlock: 10.0.1.0/24
-      AvailabilityZone: us-east-1a
+      AvailabilityZone: !Ref VpcAvailabilityZoneA
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
@@ -53,7 +74,7 @@ Resources:
       VpcId: !Ref VPC
       CidrBlock: 10.0.2.0/24
       MapPublicIpOnLaunch: false
-      AvailabilityZone: us-east-1a
+      AvailabilityZone: !Ref VpcAvailabilityZoneA
       Tags:
         - Key: Name
           Value: Private Subnet 1
@@ -63,7 +84,7 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       CidrBlock: 10.0.3.0/24
-      AvailabilityZone: us-east-1b
+      AvailabilityZone: !Ref VpcAvailabilityZoneB
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
@@ -74,7 +95,7 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       CidrBlock: 10.0.4.0/24
-      AvailabilityZone: us-east-1b
+      AvailabilityZone: !Ref VpcAvailabilityZoneB
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
@@ -127,38 +148,38 @@ Resources:
       SubnetId: !Ref PrivateSubnet2
       RouteTableId: !Ref PrivateRouteTable
 
-  #EC2 Instance
-  EC2Instance0:
-    Type: AWS::EC2::Instance
-    Properties:
-      ImageId: !Ref LatestAmiId
-      InstanceType: t2.micro
-      SecurityGroupIds:
-        - !Ref EC2SecurityGroup
-      SubnetId: !Ref PublicSubnet1
-      KeyName: !Ref KeyName
-      UserData:
-        Fn::Base64:
-          Fn::Sub: |
-            #!/bin/bash -xe
-            # Install Go
-            sudo yum update -y
-            sudo yum install -y golang
-            # Clone your application
-            cd ~
-            git clone https://github.com/pawong/cloudformation-vpc-alb-ec2-go-example.git/
-            # Change directory to the application
-            cd cloudformation-vpc-alb-ec2-go-example/src
-            # Build your Go application
-            export GIT_HASH=$(git rev-parse --short HEAD)
-            export GOPATH=~/go
-            export GOCACHE=~/.cache/go
-            go build -o main main.go
-            # Run your Go application (you might want to set this up as a service)
-            ./main &
+  # #EC2 Instance
+  # EC2Instance0:
+  #   Type: AWS::EC2::Instance
+  #   Properties:
+  #     ImageId: !Ref LatestAmiId
+  #     InstanceType: t2.micro
+  #     SecurityGroupIds:
+  #       - !Ref EC2SecurityGroup
+  #     SubnetId: !Ref PublicSubnet1
+  #     KeyName: !Ref KeyName
+  #     UserData:
+  #       Fn::Base64:
+  #         Fn::Sub: |
+  #           #!/bin/bash -xe
+  #           # Install Go
+  #           sudo yum update -y
+  #           sudo yum install -y golang
+  #           # Clone your application
+  #           cd ~
+  #           git clone https://github.com/pawong/cloudformation-vpc-alb-ec2-go-example.git/
+  #           # Change directory to the application
+  #           cd cloudformation-vpc-alb-ec2-go-example/src
+  #           # Build your Go application
+  #           export GIT_HASH=$(git rev-parse --short HEAD)
+  #           export GOPATH=~/go
+  #           export GOCACHE=~/.cache/go
+  #           go build -o main main.go
+  #           # Run your Go application (you might want to set this up as a service)
+  #           ./main &
 
-  #EC2 Instance
-  EC2Instance1:
+  # #EC2 Instance
+  # EC2Instance1:
     Type: AWS::EC2::Instance
     Properties:
       ImageId: !Ref LatestAmiId
@@ -258,3 +279,75 @@ Resources:
       SecurityGroups:
         - !GetAtt ELBSecurityGroup.GroupId
 
+  # Launch template
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+        LaunchTemplateName: !Sub ${AWS::StackName}-launch-template
+        LaunchTemplateData:
+          ImageId: !Ref LatestAmiId
+          InstanceType: t2.micro
+          NetworkInterfaces:
+            - DeviceIndex: 0
+              AssociatePublicIpAddress: false
+              Groups:
+              - "Fn::ImportValue": !Sub ${AWS::StackName}-SG
+          Monitoring:
+            Enabled: false
+          MetadataOptions:
+            HttpEndpoint: enabled
+            HttpTokens: required
+          SecurityGroupIds:
+            - !Ref EC2SecurityGroup
+          SubnetId: !Ref PublicSubnet2
+          KeyName: !Ref KeyName
+          UserData:
+            Fn::Base64:
+              Fn::Sub: |
+                #!/bin/bash -xe
+                # Install Go
+                sudo yum update -y
+                sudo yum install -y golang
+                # Clone your application
+                cd ~
+                git clone https://github.com/pawong/cloudformation-vpc-alb-ec2-go-example.git/
+                # Change directory to the application
+                cd cloudformation-vpc-alb-ec2-go-example/src
+                # Build your Go application
+                export GIT_HASH=$(git rev-parse --short HEAD)
+                export GOPATH=~/go
+                export GOCACHE=~/.cache/go
+                go build -o main main.go
+                # Run your Go application (you might want to set this up as a service)
+                ./main &
+
+  # auto scaling
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      Tags:
+      -
+        Key: BuildId
+        Value: !Sub ${BuildId}
+        PropagateAtLaunch: true   #updating this w/ the BuildID on the ASG causes the ASG to be destroyed!
+      -
+        Key: Name
+        Value: !Sub ${AWS::StackName}-ASG
+        PropagateAtLaunch: true
+      TargetGroupARNs:
+        !Split [",", "Fn::ImportValue": !Ref ApplicationLoadBalancer]
+      LaunchTemplate:
+        LaunchTemplateId:
+          !Ref LaunchTemplate
+        Version:
+          !GetAtt LaunchTemplate.LatestVersionNumber
+      AvailabilityZones:
+        [ !Sub VpcAvailabilityZoneA, VpcAvailabilityZoneB ]
+      VPCZoneIdentifier:
+        [ !Ref PrivateSubnet1, PrivateSubnet2 ]
+      DesiredCapacity:
+        !Sub ${ASGDesired}
+      MinSize:
+        !Sub ${ASGMin}
+      MaxSize:
+        !Sub ${ASGMax}
