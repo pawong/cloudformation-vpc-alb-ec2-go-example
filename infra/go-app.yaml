@@ -296,14 +296,6 @@ Resources:
       Scope: REGIONAL  # Or CLOUDFRONT for CloudFront distributions
       DefaultAction:
         Allow: {}
-      Rules:
-        - Name: Rule1
-          Priority: 1
-          Statement:
-            IPSet:
-              IPSetReferenceArn: !GetAtt IPSet.Arn
-          Action:
-            Block: {}
       VisibilityConfig:
         SampledRequestsEnabled: true
         CloudWatchMetricsEnabled: true
@@ -323,7 +315,7 @@ Resources:
   WebACLAssociation:
     Type: AWS::WAFv2::WebACLAssociation
     Properties:
-      ResourceArn: !GetAtt ApplicationLoadBalancer.Arn
+      ResourceArn: !Ref ApplicationLoadBalancer
       WebACLArn: !GetAtt WebACL.Arn
 
   # launch template
@@ -333,7 +325,7 @@ Resources:
         LaunchTemplateName: !Sub ${AWS::StackName}-launch-template
         LaunchTemplateData:
           ImageId: !Ref LatestAmiId
-          InstanceType: t2.micro
+          InstanceType: t3.small
           IamInstanceProfile:
             Arn: !GetAtt InstanceProfile.Arn
           Monitoring:
