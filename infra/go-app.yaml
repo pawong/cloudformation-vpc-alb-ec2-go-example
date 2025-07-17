@@ -39,10 +39,17 @@ Parameters:
       - BLOCK
       - COUNT
     Default: ALLOW
+  Environment:
+    Type: String
+    Description: The name of the Environment this stack belongs to
+    AllowedValues:
+      - DEV
+      - PROD
+    Default: DEV
 
 Conditions:
   ShouldCreateVpcEndpoints: !Equals [!Ref CreateVpcEndpoints, true]
-  DEFAULTALLOW: !Equals [!Ref RuleAction, "ALLOW"]
+  DefaultAllow: !Equals [!Ref RuleAction, "ALLOW"]
 
 
 Resources:
@@ -80,6 +87,10 @@ Resources:
       Tags:
       - Key: Name
         Value: !Sub ${AWS::StackName}-VPC
+      - Key: stackName
+        Value: !Ref "AWS::StackName"
+      - Key: environment
+        Value: !Ref Environment
 
   # subnets
   PublicSubnet1:
@@ -92,6 +103,10 @@ Resources:
       Tags:
         - Key: Name
           Value: Public Subnet 1
+        - Key: stackName
+          Value: !Ref "AWS::StackName"
+        - Key: environment
+          Value: !Ref Environment
 
   PrivateSubnet1:
     Type: AWS::EC2::Subnet
@@ -103,6 +118,10 @@ Resources:
       Tags:
         - Key: Name
           Value: Private Subnet 1
+        - Key: stackName
+          Value: !Ref "AWS::StackName"
+        - Key: environment
+          Value: !Ref Environment
 
   PublicSubnet2:
     Type: AWS::EC2::Subnet
@@ -114,6 +133,10 @@ Resources:
       Tags:
         - Key: Name
           Value: Public Subnet 2
+        - Key: stackName
+          Value: !Ref "AWS::StackName"
+        - Key: environment
+          Value: !Ref Environment
 
   PrivateSubnet2:
     Type: AWS::EC2::Subnet
@@ -125,6 +148,10 @@ Resources:
       Tags:
         - Key: Name
           Value: Private Subnet 2
+        - Key: stackName
+          Value: !Ref "AWS::StackName"
+        - Key: environment
+          Value: !Ref Environment
 
   # routes
   PublicRouteTable:
@@ -134,6 +161,10 @@ Resources:
       Tags:
         - Key: Name
           Value: Public Route Table
+        - Key: stackName
+          Value: !Ref "AWS::StackName"
+        - Key: environment
+          Value: !Ref Environment
 
   PublicRoute:
     Type: AWS::EC2::Route
@@ -168,6 +199,10 @@ Resources:
       Tags:
       - Key: Name
         Value: Private Route Table
+      - Key: stackName
+        Value: !Ref "AWS::StackName"
+      - Key: environment
+        Value: !Ref Environment
 
   PrivateSubnetRouteTableAssociation1:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -188,6 +223,10 @@ Resources:
       Tags:
       - Key: Name
         Value: !Sub ${AWS::StackName}-IG
+      - Key: stackName
+        Value: !Ref "AWS::StackName"
+      - Key: environment
+        Value: !Ref Environment
 
   AttachGateway:
     Type: AWS::EC2::VPCGatewayAttachment
@@ -210,6 +249,10 @@ Resources:
       Tags:
       - Key: Name
         Value: !Sub ${AWS::StackName}-NG
+      - Key: stackName
+        Value: !Ref "AWS::StackName"
+      - Key: environment
+        Value: !Ref Environment
 
   # EC2 and ALB Security Groups
   ALBSecurityGroup:
@@ -219,6 +262,11 @@ Resources:
       Tags:
       - Key: Name
         Value: !Sub ${AWS::StackName}-ALB-SG
+      - Key: stackName
+        Value: !Ref "AWS::StackName"
+      - Key: environment
+        Value: !Ref Environment
+
       VpcId: !Ref VPC
       SecurityGroupIngress:
       - IpProtocol: tcp
@@ -237,6 +285,11 @@ Resources:
       Tags:
       - Key: Name
         Value: !Sub ${AWS::StackName}-EC2-SG
+      - Key: stackName
+        Value: !Ref "AWS::StackName"
+      - Key: environment
+        Value: !Ref Environment
+
       VpcId: !Ref VPC
       SecurityGroupIngress:
       - IpProtocol: tcp
@@ -276,6 +329,13 @@ Resources:
       - Key: load_balancing.algorithm.type
         Value: least_outstanding_requests
       VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: !Sub ${AWS::StackName}-TG
+      - Key: stackName
+        Value: !Ref "AWS::StackName"
+      - Key: environment
+        Value: !Ref Environment
 
   ALBListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
@@ -286,6 +346,11 @@ Resources:
       LoadBalancerArn: !Ref ApplicationLoadBalancer
       Port: 80
       Protocol: HTTP
+      Tags:
+      - Key: stackName
+        Value: !Ref "AWS::StackName"
+      - Key: environment
+        Value: !Ref Environment
 
   ApplicationLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
@@ -296,6 +361,13 @@ Resources:
         - !Ref PublicSubnet2
       SecurityGroups:
         - !GetAtt ALBSecurityGroup.GroupId
+      Tags:
+      - Key: Name
+        Value: !Sub ${AWS::StackName}-ALB
+      - Key: stackName
+        Value: !Ref "AWS::StackName"
+      - Key: environment
+        Value: !Ref Environment
 
   # waf
   WebACL:
@@ -305,7 +377,7 @@ Resources:
       Scope: REGIONAL  # Or CLOUDFRONT for CloudFront distributions
       DefaultAction:
         Fn::If:
-          - DEFAULTALLOW
+          - DefaultAllow
           - Allow: {}
           - Block: {}
       Rules:
@@ -329,6 +401,10 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-WebACL
+        - Key: stackName
+          Value: !Ref "AWS::StackName"
+        - Key: environment
+          Value: !Ref Environment
 
   IPSet:
     Type: AWS::WAFv2::IPSet
@@ -348,48 +424,51 @@ Resources:
   LaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
-        LaunchTemplateName: !Sub ${AWS::StackName}-launch-template
-        LaunchTemplateData:
-          ImageId: !Ref LatestAmiId
-          InstanceType: t3.small
-          IamInstanceProfile:
-            Arn: !GetAtt InstanceProfile.Arn
-          Monitoring:
-            Enabled: true
-          MetadataOptions:
-            HttpEndpoint: enabled
-            HttpTokens: required
-          SecurityGroupIds:
-            - !Ref EC2SecurityGroup
-          UserData:
-            Fn::Base64:
-              Fn::Sub: |
-                #!/bin/bash -xe
-                # Install Go
-                sudo yum update -y
-                sudo yum install -y golang
-                # Clone your application
-                cd ~
-                git clone https://github.com/pawong/cloudformation-vpc-alb-ec2-go-example.git/
-                # Change directory to the application
-                cd cloudformation-vpc-alb-ec2-go-example/src
-                # Build your Go application
-                export GIT_HASH=$(git rev-parse --short HEAD)
-                export GOPATH=~/go
-                export GOCACHE=~/.cache/go
-                go build -o main main.go
-                # Run your Go application (you might want to set this up as a service)
-                ./main &
+      LaunchTemplateName: !Sub ${AWS::StackName}-launch-template
+      LaunchTemplateData:
+        ImageId: !Ref LatestAmiId
+        InstanceType: t3.small
+        IamInstanceProfile:
+          Arn: !GetAtt InstanceProfile.Arn
+        Monitoring:
+          Enabled: true
+        MetadataOptions:
+          HttpEndpoint: enabled
+          HttpTokens: required
+        SecurityGroupIds:
+          - !Ref EC2SecurityGroup
+        UserData:
+          Fn::Base64:
+            Fn::Sub: |
+              #!/bin/bash -xe
+              # Install Go
+              sudo yum update -y
+              sudo yum install -y golang
+              # Clone your application
+              cd ~
+              git clone https://github.com/pawong/cloudformation-vpc-alb-ec2-go-example.git/
+              # Change directory to the application
+              cd cloudformation-vpc-alb-ec2-go-example/src
+              # Build your Go application
+              export GIT_HASH=$(git rev-parse --short HEAD)
+              export GOPATH=~/go
+              export GOCACHE=~/.cache/go
+              go build -o main main.go
+              # Run your Go application (you might want to set this up as a service)
+              ./main &
 
   # auto scaling
   AutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
       Tags:
-      -
-        Key: Name
-        Value: !Sub ${AWS::StackName}-ASG
+      - Key: Name
+        Value: !Sub ${AWS::StackName}-instance
         PropagateAtLaunch: true
+      - Key: stackName
+        Value: !Ref "AWS::StackName"
+      - Key: environment
+        Value: !Ref Environment
       TargetGroupARNs:
         - !Ref AlbTargetGroup
       LaunchTemplate:
