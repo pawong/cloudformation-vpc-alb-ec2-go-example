@@ -12,29 +12,37 @@ Parameters:
     Description: The latest Amazon Linux 2 AMI from the Parameter Store
     Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
     Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
-  ASGDesired:
+  DesiredCapacity:
     Type: Number
     Default: 2
-    MinValue: 1
+    MinValue: 0
     MaxValue: 10
-  ASGMin:
+  MinSize:
     Type: Number
     Default: 1
-    MinValue: 1
+    MinValue: 0
     MaxValue: 10
-  ASGMax:
+  MaxSize:
     Type: Number
     Default: 10
-    MinValue: 2
+    MinValue: 0
     MaxValue: 10
   CreateVpcEndpoints:
     Type: String
     Default: true
     Description: Whether or not to create VPC endpoints for SSM access to the EC2 in private subnet
-
+  RuleAction:
+    Type: String
+    Description: The default action you want to apply for the rules created by this stack
+    AllowedValues:
+      - ALLOW
+      - BLOCK
+      - COUNT
+    Default: ALLOW
 
 Conditions:
   ShouldCreateVpcEndpoints: !Equals [!Ref CreateVpcEndpoints, true]
+  DEFAULTALLOW: !Equals [!Ref RuleAction, "ALLOW"]
 
 
 Resources:
@@ -289,13 +297,31 @@ Resources:
       SecurityGroups:
         - !GetAtt ALBSecurityGroup.GroupId
 
+  # waf
   WebACL:
     Type: AWS::WAFv2::WebACL
     Properties:
       Name: !Sub ${AWS::StackName}-WebACL
       Scope: REGIONAL  # Or CLOUDFRONT for CloudFront distributions
       DefaultAction:
-        Allow: {}
+        Fn::If:
+          - DEFAULTALLOW
+          - Allow: {}
+          - Block: {}
+      Rules:
+      - Name: RuleWithAWSManagedRules
+        Priority: 0
+        OverrideAction:
+          Count: {}
+        VisibilityConfig:
+          SampledRequestsEnabled: true
+          CloudWatchMetricsEnabled: true
+          MetricName: RuleWithAWSManagedRulesMetric
+        Statement:
+          ManagedRuleGroupStatement:
+            VendorName: AWS
+            Name: AWSManagedRulesCommonRuleSet
+            ExcludedRules: []
       VisibilityConfig:
         SampledRequestsEnabled: true
         CloudWatchMetricsEnabled: true
@@ -375,9 +401,9 @@ Resources:
       VPCZoneIdentifier:
         - !Ref PrivateSubnet1
         - !Ref PrivateSubnet2
-      DesiredCapacity: !Sub ${ASGDesired}
-      MinSize: !Sub ${ASGMin}
-      MaxSize: !Sub ${ASGMax}
+      DesiredCapacity: !Sub ${DesiredCapacity}
+      MinSize: !Sub ${MinSize}
+      MaxSize: !Sub ${MaxSize}
 
   #
   # VPC endpoints
