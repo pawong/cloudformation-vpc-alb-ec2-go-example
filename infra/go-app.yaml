@@ -346,11 +346,6 @@ Resources:
       LoadBalancerArn: !Ref ApplicationLoadBalancer
       Port: 80
       Protocol: HTTP
-      Tags:
-      - Key: stackName
-        Value: !Ref "AWS::StackName"
-      - Key: environment
-        Value: !Ref Environment
 
   ApplicationLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
